@@ -4,23 +4,24 @@
     <meta charset="utf-8">
     <title>VR Balloon Gallery | Final Project</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-event-set-component@5.0.0/dist/aframe-event-set-component.min.js"></script>
-
     <script>
       let score = 0;
       let balloonsPopped = 0;
 
-      // 1. Music Toggle Logic
+      // 1. Music Toggle Logic - Fixed selector and state check
       AFRAME.registerComponent('music-handler', {
         init: function () {
           this.el.addEventListener('click', () => {
             let musicEntity = document.querySelector('#bgMusic');
-            if (musicEntity.components.sound.isPlaying) {
-              musicEntity.components.sound.stopSound();
+            // A-Frame sound component uses 'isPlaying'
+            let soundComponent = musicEntity.components.sound;
+            
+            if (soundComponent.isPlaying) {
+              soundComponent.stopSound();
               this.el.setAttribute('value', 'Music: OFF');
               this.el.setAttribute('material', 'color', '#aa0000');
             } else {
-              musicEntity.components.sound.playSound();
+              soundComponent.playSound();
               this.el.setAttribute('value', 'Music: ON');
               this.el.setAttribute('material', 'color', '#444');
             }
@@ -28,31 +29,31 @@
         }
       });
 
-      // 2. Start Game Logic
+      // 2. Start Game Logic - Fixed Raycaster transition
       AFRAME.registerComponent('start-game', {
         init: function () {
           this.el.addEventListener('click', () => {
             document.querySelector('#ui-container').setAttribute('visible', 'false');
+            document.querySelector('#ui-container').setAttribute('scale', '0 0 0'); // Fully remove
             document.querySelector('#game-elements').setAttribute('visible', 'true');
-            // Ensure raycaster looks for the .balloon class
-            document.querySelector('#cursor').setAttribute('raycaster', 'objects: .balloon');
+            
+            // Now tell the cursor to look for BOTH buttons and balloons
+            document.querySelector('#cursor').setAttribute('raycaster', 'objects: .clickable, .balloon');
           });
         }
       });
 
-      // 3. Balloon Logic & Visual Feedback
+      // 3. Balloon Logic
       AFRAME.registerComponent('balloon-target', {
         init: function () {
           this.el.addEventListener('click', () => {
             const pop = document.querySelector('#popSound');
             if(pop.components.sound) pop.components.sound.playSound();
 
-            // Update Score Logic
             score += 10;
             balloonsPopped++;
             document.querySelector('#scoreBoard').setAttribute('value', 'Score: ' + score);
             
-            // POP ANIMATION: Shrink the balloon quickly
             this.el.setAttribute('animation__pop', {
               property: 'scale',
               to: '0 0 0',
@@ -60,17 +61,13 @@
               easing: 'easeInBack'
             });
 
-            // Cleanup after animation finishes
             setTimeout(() => {
-              this.el.classList.remove('balloon'); 
               this.el.setAttribute('visible', 'false');
+              this.el.classList.remove('balloon'); 
 
-              // Check for Level Switch (3 balloons in Level 1)
               if (balloonsPopped === 3) {
                   document.querySelector('#level1').setAttribute('visible', 'false');
                   document.querySelector('#level2').setAttribute('visible', 'true');
-                  // Level 2 reset: notify raycaster of new targets
-                  document.querySelector('#cursor').setAttribute('raycaster', 'objects: .balloon');
               }
             }, 150);
           });
@@ -84,12 +81,11 @@
       <a-assets>
         <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
         <audio id="popSoundFile" src="assets/balloonpop.mp3" crossorigin="anonymous"></audio>
-        
         <img id="groundTex" src="https://i.imgur.com/W4M2QvU.png">
         <audio id="bgMusicSrc" src="https://cdn.aframe.io/composer/audio/ambient.mp3" crossorigin="anonymous"></audio>
       </a-assets>
 
-      <a-entity id="bgMusic" sound="src: #bgMusicSrc; loop: true; volume: 0.2"></a-entity>
+      <a-entity id="bgMusic" sound="src: #bgMusicSrc; loop: true; volume: 0.2; autoplay: false"></a-entity>
       <a-entity id="popSound" sound="src: #popSoundFile; poolSize: 5"></a-entity>
 
       <a-entity camera look-controls position="0 1.6 0">
@@ -102,20 +98,20 @@
           position="0 0 -1">
         </a-cursor>
         
-        <a-entity position="0 -0.4 -1">
+        <a-entity id="hud-score" position="0 -0.4 -1">
             <a-plane color="#000" opacity="0.6" width="0.6" height="0.15" position="0 0 0"></a-plane>
             <a-text id="scoreBoard" value="Score: 0" align="center" width="2" color="#FFF" shader="flat" position="0 0 0.02"></a-text>
         </a-entity>
       </a-entity>
 
-      <a-entity id="ui-container" position="0 1.6 -2">
+      <a-entity id="ui-container" position="0 1.6 -2.5">
         <a-plane color="#222" width="2.5" height="1.5" opacity="0.9"></a-plane>
         <a-text value="BALLOON GALLERY VR" align="center" position="0 0.5 0.05" width="4"></a-text>
         <a-text value="Anush - CS Final Project" align="center" position="0 0.3 0.05" width="2"></a-text>
         
         <a-text id="musicToggle" class="clickable" music-handler 
-                value="Music: ON" align="center" position="0 0 0.05" 
-                width="2" geometry="primitive: plane; width: 0.7; height: 0.2" material="color: #444"></a-text>
+                value="Music: OFF" align="center" position="0 0 0.05" 
+                width="2" geometry="primitive: plane; width: 0.7; height: 0.2" material="color: #aa0000"></a-text>
 
         <a-text class="clickable" start-game 
                 value="START GAME" align="center" position="0 -0.4 0.05" 
@@ -123,27 +119,21 @@
       </a-entity>
 
       <a-entity id="game-elements" visible="false">
-        
         <a-entity id="level1">
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="-1.2 2 -4" scale="1 1 1"
                     animation="property: position; to: -1.2 2.2 -4; dir: alternate; dur: 2000; loop: true"></a-entity>
-          
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="0 2.5 -5" scale="1 1 1"
                     animation="property: position; to: 0 2.8 -5; dir: alternate; dur: 2500; loop: true"></a-entity>
-          
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="1.2 1.8 -3" scale="1 1 1"
                     animation="property: position; to: 1.2 2.0 -3; dir: alternate; dur: 1800; loop: true"></a-entity>
         </a-entity>
 
         <a-entity id="level2" visible="false">
           <a-text value="LEVEL 2" position="0 3.5 -4" align="center" color="#FFD700" width="5"></a-text>
-          
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="-2 1.5 -4" 
                     animation="property: position; to: 2 1.5 -4; dir: alternate; dur: 3000; loop: true"></a-entity>
-          
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="0 2 -6" 
                     animation="property: rotation; to: 0 360 0; dur: 4000; loop: true; easing: linear"></a-entity>
-          
           <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="1.5 3 -3" 
                     animation="property: position; to: 1.5 1 -3; dir: alternate; dur: 1200; loop: true"></a-entity>
         </a-entity>
@@ -151,8 +141,8 @@
         <a-sky color="#87CEEB"></a-sky>
         <a-plane src="#groundTex" rotation="-90 0 0" width="50" height="50" repeat="25 25"></a-plane>
         
-        <a-entity light="type: ambient; intensity: 0.7"></a-entity>
-        <a-entity light="type: directional; intensity: 0.5" position="-1 3 1"></a-entity>
+        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6" position="-1 3 1"></a-entity>
       </a-entity>
 
     </a-scene>
