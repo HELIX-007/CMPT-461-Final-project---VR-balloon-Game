@@ -34,7 +34,7 @@
           this.el.addEventListener('click', () => {
             document.querySelector('#ui-container').setAttribute('visible', 'false');
             document.querySelector('#game-elements').setAttribute('visible', 'true');
-            // Move cursor to interact only with targets now
+            // Transition raycaster to target balloons specifically
             document.querySelector('#cursor').setAttribute('raycaster', 'objects: .balloon');
           });
         }
@@ -45,7 +45,7 @@
       AFRAME.registerComponent('balloon-target', {
         init: function () {
           this.el.addEventListener('click', () => {
-            // Play pop sound
+            // Play your custom pop sound
             const pop = document.querySelector('#popSound');
             if(pop.components.sound) pop.components.sound.playSound();
 
@@ -53,9 +53,10 @@
             score += 10;
             document.querySelector('#scoreBoard').setAttribute('value', 'Score: ' + score);
             
-            // Visual feedback before hiding
+            // Visual feedback: Shrink and remove from raycaster
             this.el.setAttribute('scale', '0 0 0'); 
-            this.el.classList.remove('balloon'); // Stop raycaster from hitting it
+            this.el.classList.remove('balloon'); 
+            this.el.setAttribute('visible', 'false');
           });
         }
       });
@@ -63,11 +64,12 @@
   </head>
   <body>
     <a-scene xr-mode-ui="cardboardModeEnabled: true">
+      
       <a-assets>
-        <img id="groundTex" src="https://i.imgur.com/W4M2QvU.png">
-        <img id="balloonTex" src="https://i.imgur.com/E963yxl.png">
+        <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
+        <audio id="popSrc" src="assets/balloonpop.mp3" crossorigin="anonymous"></audio>
         
-        <audio id="popSrc" src="https://cdn.aframe.io/basic-guide/audio/backgroundnoise.wav" crossorigin="anonymous"></audio>
+        <img id="groundTex" src="https://i.imgur.com/W4M2QvU.png">
         <audio id="bgMusicSrc" src="https://cdn.aframe.io/composer/audio/ambient.mp3" crossorigin="anonymous"></audio>
       </a-assets>
 
@@ -105,14 +107,23 @@
 
       <a-entity id="game-elements" visible="false">
         <a-entity id="level1">
-          <a-sphere class="balloon clickable" balloon-target src="#balloonTex" position="-1.5 2 -4" radius="0.4" 
-                    animation="property: position; to: -1.5 2.3 -4; dir: alternate; dur: 2000; loop: true"></a-sphere>
+          <a-entity class="balloon clickable" balloon-target 
+                    gltf-model="#balloonModel" 
+                    position="-1.5 2 -4" 
+                    scale="1 1 1"
+                    animation="property: position; to: -1.5 2.3 -4; dir: alternate; dur: 2000; loop: true"></a-entity>
           
-          <a-sphere class="balloon clickable" balloon-target src="#balloonTex" position="0 1.8 -5" radius="0.4"
-                    animation="property: position; to: 0 2.1 -5; dir: alternate; dur: 2500; loop: true"></a-sphere>
+          <a-entity class="balloon clickable" balloon-target 
+                    gltf-model="#balloonModel" 
+                    position="0 1.8 -5" 
+                    scale="1 1 1"
+                    animation="property: position; to: 0 2.1 -5; dir: alternate; dur: 2500; loop: true"></a-entity>
           
-          <a-sphere class="balloon clickable" balloon-target src="#balloonTex" position="1.5 2.1 -4" radius="0.4"
-                    animation="property: position; to: 1.5 1.8 -4; dir: alternate; dur: 1800; loop: true"></a-sphere>
+          <a-entity class="balloon clickable" balloon-target 
+                    gltf-model="#balloonModel" 
+                    position="1.5 2.1 -4" 
+                    scale="1 1 1"
+                    animation="property: position; to: 1.5 1.8 -4; dir: alternate; dur: 1800; loop: true"></a-entity>
         </a-entity>
 
         <a-sky color="#87CEEB"></a-sky>
