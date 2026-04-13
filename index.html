@@ -52,9 +52,20 @@
       </a-entity>
 
       <a-entity id="hud-container" position="-0.4 0.3 -1">
-          <a-plane color="#000" opacity="0.5" width="0.4" height="0.12" position="0 0 0"></a-plane>
-          <a-text id="vrScore" value="Score: 0" align="center" width="1.5" color="white" shader="flat" position="0 0 0.01"></a-text>
-      </a-entity>
+    <a-plane color="#000" opacity="0.5" width="0.5" height="0.15" position="0 0 0"></a-plane>
+    
+    <a-text id="vrScore" 
+            value="Score: 0" 
+            align="center" 
+            width="2" 
+            color="white" 
+            shader="flat" 
+            position="0 0 0.02"
+            baseline="center"
+            anchor="center"
+            negate="false">
+    </a-text>
+</a-entity>
 
     </a-entity>
   </a-entity>
@@ -103,14 +114,35 @@ function popBalloon(el) {
   const sound = document.querySelector('#popSoundEntity');
   if (sound.components.sound) { sound.components.sound.playSound(); }
 
+  // Update Score
   score += 10;
-  document.querySelector('#vrScore').setAttribute('value', 'Score: ' + score);
+  
+  // THE FIX: Access the scoreboard element
+  const scoreEl = document.querySelector('#vrScore');
+  
+  // Update the text value
+  scoreEl.setAttribute('value', 'Score: ' + score);
+  
+  // Force a re-render by slightly nudging the position (invisible to user)
+  // This is a common fix for A-Frame HUD glitches on Safari
+  scoreEl.object3D.position.z = 0.021; 
+  setTimeout(() => { scoreEl.object3D.position.z = 0.02; }, 10);
 
+  // Pop Animation
   el.setAttribute('animation', {
     property: 'scale',
     to: '0 0 0',
     dur: 150
   });
+
+  setTimeout(() => {
+    if (el.parentNode) {
+      el.parentNode.removeChild(el);
+      balloonsPopped++;
+      checkLevel();
+    }
+  }, 150);
+}
 
   setTimeout(() => {
     if (el.parentNode) {
