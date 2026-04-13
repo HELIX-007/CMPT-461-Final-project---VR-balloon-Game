@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <title>ANUSH VR Balloon Shooter</title>
 
-  <!-- MOBILE FIX -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -27,7 +26,6 @@
 
     button {
       padding: 10px 20px;
-      margin: 10px;
       font-size: 18px;
     }
 
@@ -44,7 +42,7 @@
 
 <body>
 
-<!-- SPLASH -->
+<!-- START SCREEN -->
 <div id="overlay">
   <h1>ANUSH</h1>
   <button onclick="startGame()">Start Game</button>
@@ -57,43 +55,42 @@
 
 <a-scene embedded>
 
-  <!-- SKY -->
   <a-sky color="#87CEEB"></a-sky>
 
-  <!-- CAMERA -->
-  <a-entity 
-    camera 
-    look-controls="magicWindowTrackingEnabled: true"
-    raycaster="objects: .clickable">
+  <!-- FIXED CAMERA (IMPORTANT) -->
+  <a-entity id="cameraRig" camera look-controls position="0 1.6 0">
 
-    <!-- YELLOW GAZE -->
+    <!-- GAZE CURSOR (FIXED) -->
     <a-entity
       cursor="fuse: true; fuseTimeout: 1000"
+      raycaster="objects: .clickable"
       position="0 0 -1"
       geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-      material="color: yellow">
+      material="color: yellow; shader: flat">
     </a-entity>
 
   </a-entity>
 
-  <!-- LIGHT -->
   <a-light type="ambient" intensity="1"></a-light>
 
-  <!-- WALL -->
   <a-plane position="0 2 -5" width="6" height="4" color="#333"></a-plane>
 
-  <!-- BALLOONS -->
   <a-entity id="balloons"></a-entity>
 
 </a-scene>
 
 <script>
 let score = 0;
+let started = false;
 
-// START GAME
+// START GAME (user gesture unlocks everything)
 function startGame() {
   document.getElementById("overlay").style.display = "none";
-  spawnBalloons();
+
+  if (!started) {
+    started = true;
+    spawnBalloons();
+  }
 }
 
 // SPAWN
@@ -105,12 +102,11 @@ function spawnBalloons() {
 
       let balloon = document.createElement("a-entity");
 
-      // LOAD MODEL DIRECTLY (no <a-assets>)
       balloon.setAttribute("gltf-model", "assets/balloon.glb");
       balloon.setAttribute("position", `${i} ${j} -4.9`);
       balloon.setAttribute("scale", "0.5 0.5 0.5");
 
-      balloon.setAttribute("class", "clickable");
+      balloon.classList.add("clickable");
 
       balloon.addEventListener("click", () => popBalloon(balloon));
 
@@ -125,17 +121,17 @@ function popBalloon(balloon) {
   balloon.setAttribute("animation", {
     property: "scale",
     to: "0 0 0",
-    dur: 200
+    dur: 150
   });
 
-  setTimeout(() => balloon.remove(), 200);
+  setTimeout(() => balloon.remove(), 150);
 
   score += 10;
   document.getElementById("score").innerText = score;
 
-  // SAFE SOUND (iOS friendly)
+  // safer mobile audio
   let audio = new Audio("assets/balloonpop.mp3");
-  audio.play();
+  audio.play().catch(() => {});
 }
 </script>
 
