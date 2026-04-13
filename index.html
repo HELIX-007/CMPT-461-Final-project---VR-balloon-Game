@@ -3,78 +3,88 @@
 <head>
   <meta charset="utf-8">
   <title>ANUSH VR Balloon Shooter</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
   <style>
-    body { margin: 0; overflow: hidden; }
-
+    body { margin: 0; overflow: hidden; background-color: #000; }
     #overlay {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      background: black;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
       color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
       z-index: 10;
+      font-family: sans-serif;
     }
-
     button {
-      padding: 10px 20px;
-      font-size: 18px;
+      padding: 15px 30px;
+      font-size: 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-
+    /* Hide standard score UI when in VR */
     #scoreUI {
       position: absolute;
-      top: 10px;
-      right: 20px;
-      color: white;
-      font-size: 20px;
+      top: 20px; right: 20px;
+      color: white; font-size: 24px;
       z-index: 5;
+      pointer-events: none;
     }
   </style>
 </head>
 
 <body>
 
-<!-- START SCREEN -->
 <div id="overlay">
   <h1>ANUSH</h1>
+  <p>Final Project: VR Balloon Gallery</p>
+  <p style="color: #ccc;">Look at balloons to pop them!</p>
   <button onclick="startGame()">Start Game</button>
 </div>
 
-<!-- SCORE -->
-<div id="scoreUI">
-  Score: <span id="score">0</span>
-</div>
+<div id="scoreUI">Score: <span id="scoreText">0</span></div>
 
-<a-scene embedded>
+<a-scene xr-mode-ui="cardboardModeEnabled: true" renderer="antialias: true">
+  
+  <a-assets>
+    <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
+    <audio id="popSound" src="assets/balloonpop.mp3" crossorigin="anonymous"></audio>
+  </a-assets>
 
   <a-sky color="#87CEEB"></a-sky>
 
-  <!-- FIXED CAMERA (IMPORTANT) -->
-  <a-entity id="cameraRig" camera look-controls position="0 1.6 0">
+  <a-entity id="cameraRig" position="0 0 0">
+    <a-entity camera look-controls position="0 1.6 0">
+      
+      <a-entity
+        cursor="fuse: true; fuseTimeout: 1000"
+        raycaster="objects: .clickable"
+        position="0 0 -1"
+        geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
+        material="color: yellow; shader: flat"
+        animation__fusing="property: scale; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1000; startEvents: fusing">
+      </a-entity>
 
-    <!-- GAZE CURSOR (FIXED) -->
-    <a-entity
-      cursor="fuse: true; fuseTimeout: 1000"
-      raycaster="objects: .clickable"
-      position="0 0 -1"
-      geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-      material="color: yellow; shader: flat">
+      <a-text id="vrScore" value="Score: 0" 
+              position="0 -0.5 -1.2" 
+              align="center" 
+              width="2" 
+              color="white" 
+              shader="flat">
+      </a-text>
+
     </a-entity>
-
   </a-entity>
 
-  <a-light type="ambient" intensity="1"></a-light>
+  <a-light type="ambient" intensity="0.8"></a-light>
+  <a-light type="directional" position="1 3 1" intensity="0.6"></a-light>
 
-  <a-plane position="0 2 -5" width="6" height="4" color="#333"></a-plane>
-
+  <a-plane position="0 2 -5.1" width="10" height="6" color="#444"></a-plane>
+  
   <a-entity id="balloons"></a-entity>
 
 </a-scene>
@@ -83,9 +93,14 @@
 let score = 0;
 let started = false;
 
-// START GAME (user gesture unlocks everything)
 function startGame() {
   document.getElementById("overlay").style.display = "none";
+  
+  // UNLOCK AUDIO for iPhone
+  const sceneEl = document.querySelector('a-scene');
+  if (sceneEl.audioListener) {
+    sceneEl.audioListener.context.resume();
+  }
 
   if (!started) {
     started = true;
@@ -93,45 +108,89 @@ function startGame() {
   }
 }
 
-// SPAWN
 function spawnBalloons() {
   const container = document.getElementById("balloons");
 
-  for (let i = -2; i <= 2; i++) {
-    for (let j = 1; j <= 3; j++) {
-
+  // Create a grid of balloons (3x3 for Level 1)
+  for (let x = -1.5; x <= 1.5; x += 1.5) {
+    for (let y = 1.5; y <= 3.5; y += 1) {
       let balloon = document.createElement("a-entity");
 
-      balloon.setAttribute("gltf-model", "assets/balloon.glb");
-      balloon.setAttribute("position", `${i} ${j} -4.9`);
+      balloon.setAttribute("gltf-model", "#balloonModel");
+      balloon.setAttribute("position", {x: x, y: y, z: -5});
       balloon.setAttribute("scale", "0.5 0.5 0.5");
-
       balloon.classList.add("clickable");
 
-      balloon.addEventListener("click", () => popBalloon(balloon));
+      // Handle the "Pop"
+      balloon.addEventListener("click", function() {
+        // Play Pop Sound
+        let popAudio = document.querySelector('#popSound');
+        if (popAudio.components.sound) {
+           popAudio.components.sound.playSound();
+        } else {
+           // Fallback for plain HTML audio
+           new Audio("assets/balloonpop.mp3").play().catch(()=>{});
+        }
+
+        // Animation
+        balloon.setAttribute("animation", {
+          property: "scale",
+          to: "0 0 0",
+          dur: 150
+        });
+
+        // Update Score
+        score += 10;
+        document.getElementById("scoreText").innerText = score;
+        document.getElementById("vrScore").setAttribute('value', 'Score: ' + score);
+
+        setTimeout(() => {
+          if (balloon.parentNode) balloon.parentNode.removeChild(balloon);
+          checkLevelProgress();
+        }, 150);
+      });
 
       container.appendChild(balloon);
     }
   }
 }
 
-// POP
-function popBalloon(balloon) {
+function checkLevelProgress() {
+    const remaining = document.querySelectorAll('.clickable').length;
+    if (remaining === 0) {
+        // Requirements: At least two levels
+        alert("Level 1 Clear! Starting Level 2...");
+        startLevel2();
+    }
+}
 
-  balloon.setAttribute("animation", {
-    property: "scale",
-    to: "0 0 0",
-    dur: 150
-  });
+function startLevel2() {
+    const container = document.getElementById("balloons");
+    // Spawn 5 moving balloons for Level 2
+    for (let i = 0; i < 5; i++) {
+        let b = document.createElement("a-entity");
+        b.setAttribute("gltf-model", "#balloonModel");
+        let startX = (Math.random() * 4) - 2;
+        b.setAttribute("position", `${startX} ${Math.random() * 2 + 1} -4`);
+        b.setAttribute("scale", "0.4 0.4 0.4");
+        b.classList.add("clickable");
+        
+        // Moving animation
+        b.setAttribute("animation__move", {
+            property: "position",
+            to: `${-startX} 2 -4`,
+            dur: 3000,
+            dir: "alternate",
+            loop: true
+        });
 
-  setTimeout(() => balloon.remove(), 150);
-
-  score += 10;
-  document.getElementById("score").innerText = score;
-
-  // safer mobile audio
-  let audio = new Audio("assets/balloonpop.mp3");
-  audio.play().catch(() => {});
+        b.addEventListener("click", () => {
+             score += 20; // More points for moving targets
+             document.getElementById("vrScore").setAttribute('value', 'Score: ' + score);
+             b.remove();
+        });
+        container.appendChild(b);
+    }
 }
 </script>
 
