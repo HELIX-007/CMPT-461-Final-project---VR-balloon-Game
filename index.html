@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <title>ANUSH VR Balloon Shooter</title>
+
+  <!-- IMPORTANT FOR MOBILE -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <style>
@@ -63,36 +67,41 @@
   <button onclick="pauseGame()">Pause</button>
 </div>
 
-<a-scene 
-  vr-mode-ui="enabled: true"
-  webxr="optionalFeatures: local-floor; referenceSpaceType: local"
-  renderer="antialias: true">
-  
-  <!-- ASSETS (FIXED PATHS) -->
+<!-- SCENE -->
+<a-scene embedded renderer="antialias: true">
+
+  <!-- ASSETS -->
   <a-assets timeout="10000">
     <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
     <audio id="popSound" src="assets/balloonpop.mp3"></audio>
   </a-assets>
 
+  <!-- SKY -->
   <a-sky color="#87CEEB"></a-sky>
 
-  <a-camera 
-  look-controls="magicWindowTrackingEnabled: true"
-  raycaster="objects: .clickable"
-  cursor="fuse: true; fuseTimeout: 1000">
+  <!-- CAMERA + GAZE (FIXED) -->
+  <a-entity 
+    camera 
+    look-controls="magicWindowTrackingEnabled: true"
+    raycaster="objects: .clickable">
 
-  <!-- Yellow crosshair -->
-  <a-cursor 
-    material="color: yellow; shader: flat"
-    geometry="radiusInner: 0.008; radiusOuter: 0.015">
-  </a-cursor>
+    <!-- Yellow gaze cursor -->
+    <a-entity
+      cursor="fuse: true; fuseTimeout: 1000"
+      position="0 0 -1"
+      geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+      material="color: yellow; shader: flat">
+    </a-entity>
 
-</a-camera>
+  </a-entity>
 
+  <!-- LIGHT -->
   <a-light type="ambient" intensity="1"></a-light>
 
+  <!-- WALL -->
   <a-plane position="0 2 -5" width="6" height="4" color="#333"></a-plane>
 
+  <!-- BALLOONS -->
   <a-entity id="balloons"></a-entity>
 
 </a-scene>
@@ -101,7 +110,7 @@
 let score = 0;
 let muted = false;
 
-// START
+// START GAME
 function startGame() {
   document.getElementById("overlay").style.display = "none";
   spawnBalloons();
@@ -118,7 +127,7 @@ function pauseGame() {
   location.reload();
 }
 
-// SPAWN
+// SPAWN BALLOONS
 function spawnBalloons() {
   const container = document.getElementById("balloons");
   container.innerHTML = "";
@@ -131,7 +140,10 @@ function spawnBalloons() {
       balloon.setAttribute("gltf-model", "#balloonModel");
       balloon.setAttribute("position", `${i} ${j} -4.9`);
       balloon.setAttribute("scale", "0.5 0.5 0.5");
+
+      // IMPORTANT: makes it targetable
       balloon.setAttribute("class", "clickable");
+
       balloon.addEventListener("click", () => popBalloon(balloon));
 
       container.appendChild(balloon);
@@ -139,7 +151,7 @@ function spawnBalloons() {
   }
 }
 
-// POP
+// POP BALLOON
 function popBalloon(balloon) {
 
   balloon.setAttribute("animation", {
@@ -148,7 +160,11 @@ function popBalloon(balloon) {
     dur: 200
   });
 
-  setTimeout(() => balloon.remove(), 200);
+  setTimeout(() => {
+    if (balloon.parentNode) {
+      balloon.parentNode.removeChild(balloon);
+    }
+  }, 200);
 
   score += 10;
   document.getElementById("score").innerText = score;
