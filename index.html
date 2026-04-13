@@ -29,7 +29,6 @@
 </div>
 
 <a-scene xr-mode-ui="cardboardModeEnabled: true">
-  
   <a-assets>
     <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
     <audio id="popSound" src="assets/balloonpop.mp3" crossorigin="anonymous"></audio>
@@ -52,31 +51,24 @@
       </a-entity>
 
       <a-entity id="hud-container" position="-0.4 0.3 -1">
-    <a-plane color="#000" opacity="0.5" width="0.5" height="0.15" position="0 0 0"></a-plane>
-    
-    <a-text id="vrScore" 
-            value="Score: 0" 
-            align="center" 
-            width="2" 
-            color="white" 
-            shader="flat" 
-            position="0 0 0.02"
-            baseline="center"
-            anchor="center"
-            negate="false">
-    </a-text>
-</a-entity>
-
+          <a-plane color="#000" opacity="0.5" width="0.5" height="0.15" position="0 0 0"></a-plane>
+          <a-text id="vrScore" 
+                  value="Score: 0" 
+                  align="center" 
+                  width="2" 
+                  color="white" 
+                  shader="flat" 
+                  position="0 0 0.02"
+                  negate="false">
+          </a-text>
+      </a-entity>
     </a-entity>
   </a-entity>
 
   <a-entity id="popSoundEntity" sound="src: #popSound; poolSize: 5"></a-entity>
-
   <a-light type="ambient" intensity="0.8"></a-light>
   <a-plane position="0 2 -5.1" width="10" height="6" color="#444"></a-plane>
-  
   <a-entity id="balloonsContainer"></a-entity>
-
 </a-scene>
 
 <script>
@@ -85,17 +77,13 @@ let balloonsPopped = 0;
 
 function startGame() {
   document.getElementById("overlay").style.display = "none";
-  
-  // iOS Audio Unlock
   const sceneEl = document.querySelector('a-scene');
   if (sceneEl.audioListener) { sceneEl.audioListener.context.resume(); }
-
   spawnLevel1();
 }
 
 function spawnLevel1() {
   const container = document.getElementById("balloonsContainer");
-  // 3x3 Grid for Level 1
   for (let x = -1.5; x <= 1.5; x += 1.5) {
     for (let y = 1.5; y <= 3.5; y += 1) {
       let balloon = document.createElement("a-entity");
@@ -103,7 +91,6 @@ function spawnLevel1() {
       balloon.setAttribute("position", {x: x, y: y, z: -5});
       balloon.setAttribute("scale", "0.5 0.5 0.5");
       balloon.classList.add("clickable");
-
       balloon.addEventListener("click", () => popBalloon(balloon));
       container.appendChild(balloon);
     }
@@ -114,21 +101,14 @@ function popBalloon(el) {
   const sound = document.querySelector('#popSoundEntity');
   if (sound.components.sound) { sound.components.sound.playSound(); }
 
-  // Update Score
   score += 10;
-  
-  // THE FIX: Access the scoreboard element
   const scoreEl = document.querySelector('#vrScore');
-  
-  // Update the text value
   scoreEl.setAttribute('value', 'Score: ' + score);
   
-  // Force a re-render by slightly nudging the position (invisible to user)
-  // This is a common fix for A-Frame HUD glitches on Safari
+  // Force re-render nudge
   scoreEl.object3D.position.z = 0.021; 
   setTimeout(() => { scoreEl.object3D.position.z = 0.02; }, 10);
 
-  // Pop Animation
   el.setAttribute('animation', {
     property: 'scale',
     to: '0 0 0',
@@ -144,17 +124,7 @@ function popBalloon(el) {
   }, 150);
 }
 
-  setTimeout(() => {
-    if (el.parentNode) {
-      el.parentNode.removeChild(el);
-      balloonsPopped++;
-      checkLevel();
-    }
-  }, 150);
-}
-
 function checkLevel() {
-  // Requirement: At least two levels
   if (balloonsPopped === 9) {
     spawnLevel2();
   }
@@ -162,16 +132,13 @@ function checkLevel() {
 
 function spawnLevel2() {
   const container = document.getElementById("balloonsContainer");
-  // Moving balloons for Level 2
   for (let i = 0; i < 6; i++) {
     let b = document.createElement("a-entity");
     b.setAttribute("gltf-model", "#balloonModel");
     b.setAttribute("class", "clickable");
     b.setAttribute("scale", "0.4 0.4 0.4");
-    
     let startX = (Math.random() * 4) - 2;
     b.setAttribute("position", `${startX} ${Math.random() * 2 + 1} -4`);
-
     b.setAttribute("animation__move", {
       property: "position",
       to: `${-startX} ${Math.random() * 2 + 1} -4`,
@@ -179,12 +146,10 @@ function spawnLevel2() {
       dir: "alternate",
       loop: true
     });
-
     b.addEventListener("click", () => popBalloon(b));
     container.appendChild(b);
   }
 }
 </script>
-
 </body>
 </html>
