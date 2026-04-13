@@ -6,7 +6,8 @@
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <style>
-    body { margin: 0; }
+    body { margin: 0; overflow: hidden; }
+
     #overlay {
       position: absolute;
       width: 100%;
@@ -19,10 +20,27 @@
       align-items: center;
       z-index: 10;
     }
+
     button {
       padding: 10px 20px;
       margin: 10px;
       font-size: 18px;
+    }
+
+    #scoreUI {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      color: white;
+      font-size: 20px;
+      z-index: 5;
+    }
+
+    #pauseUI {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      z-index: 5;
     }
   </style>
 </head>
@@ -37,16 +55,16 @@
 </div>
 
 <!-- ================= UI ================= -->
-<div style="position:absolute; top:10px; right:20px; color:white; font-size:20px; z-index:5;">
+<div id="scoreUI">
   Score: <span id="score">0</span>
 </div>
 
-<div style="position:absolute; top:10px; left:20px; z-index:5;">
+<div id="pauseUI">
   <button onclick="pauseGame()">Pause</button>
 </div>
 
-<!-- ================= A-FRAME SCENE ================= -->
-<a-scene vr-mode-ui="enabled: true">
+<!-- ================= A-FRAME ================= -->
+<a-scene vr-mode-ui="enabled: true" renderer="antialias: true">
 
   <!-- Assets -->
   <a-assets>
@@ -54,16 +72,32 @@
     <audio id="popSound" src="balloonpop.mp3"></audio>
   </a-assets>
 
-  <!-- Camera + Gaze Cursor -->
-  <a-camera position="0 1.6 0">
+  <!-- Sky -->
+  <a-sky color="#87CEEB"></a-sky>
+
+  <!-- Camera -->
+  <a-camera look-controls="magicWindowTrackingEnabled: true" position="0 1.6 0">
+
+    <!-- Gaze Cursor -->
     <a-cursor 
-      fuse="true" 
+      fuse="true"
       fuse-timeout="1000"
-      color="red">
+      material="color: red; shader: flat"
+      geometry="radiusInner: 0.005; radiusOuter: 0.01"
+      animation__click="property: scale; startEvents: click; from: 1 1 1; to: 0.8 0.8 0.8; dur: 150"
+      animation__fusing="property: scale; startEvents: fusing; to: 1.3 1.3 1.3; dur: 1000">
     </a-cursor>
+
+    <!-- Flash -->
+    <a-entity id="flash"
+      geometry="primitive: circle; radius: 0.03"
+      material="color: yellow; opacity: 0"
+      position="0 0 -1">
+    </a-entity>
+
   </a-camera>
 
-  <!-- Light -->
+  <!-- Lighting -->
   <a-light type="ambient" intensity="1"></a-light>
 
   <!-- Wall -->
@@ -79,23 +113,48 @@ let score = 0;
 let muted = false;
 let level = 1;
 
+// ================= START =================
 function startGame() {
   document.getElementById("overlay").style.display = "none";
-  spawnBalloons();
+  spawnLevel1();
 }
 
+// ================= MUTE =================
 function toggleMute() {
   muted = !muted;
   document.getElementById("muteBtn").innerText = "Mute: " + (muted ? "ON" : "OFF");
 }
 
+// ================= PAUSE =================
 function pauseGame() {
   alert("Game Paused");
-  location.reload(); // simple reset
+  location.reload();
 }
 
-// ================= BALLOON SPAWNING =================
-function spawnBalloons() {
+// ================= FLASH =================
+function flashEffect() {
+  let flash = document.querySelector("#flash");
+  flash.setAttribute("material", "opacity", 1);
+
+  setTimeout(() => {
+    flash.setAttribute("material", "opacity", 0);
+  }, 100);
+}
+
+// ================= RECOIL =================
+function recoil() {
+  let cam = document.querySelector("a-camera");
+
+  cam.setAttribute("animation", {
+    property: "rotation",
+    to: "-2 0 0",
+    dur: 100,
+    dir: "alternate"
+  });
+}
+
+// ================= LEVEL 1 =================
+function spawnLevel1() {
   const container = document.getElementById("balloons");
   container.innerHTML = "";
 
@@ -107,7 +166,6 @@ function spawnBalloons() {
       balloon.setAttribute("gltf-model", "#balloonModel");
       balloon.setAttribute("position", `${i} ${j} -4.9`);
       balloon.setAttribute("scale", "0.5 0.5 0.5");
-      balloon.setAttribute("class", "clickable");
 
       balloon.addEventListener("click", () => popBalloon(balloon));
 
@@ -116,49 +174,19 @@ function spawnBalloons() {
   }
 }
 
-// ================= POP LOGIC =================
-function popBalloon(balloon) {
-  balloon.parentNode.removeChild(balloon);
-
-  score += 10;
-  document.getElementById("score").innerText = score;
-
-  if (!muted) {
-    document.querySelector("#popSound").play();
-  }
-
-  checkLevelComplete();
-}
-
-// ================= LEVEL SYSTEM =================
-function checkLevelComplete() {
-  const remaining = document.querySelectorAll("#balloons a-entity").length;
-
-  if (remaining === 0) {
-    level++;
-
-    if (level === 2) {
-      alert("Level 2!");
-      spawnMovingBalloons();
-    } else {
-      alert("You Win!");
-    }
-  }
-}
-
 // ================= LEVEL 2 =================
-function spawnMovingBalloons() {
+function spawnLevel2() {
   const container = document.getElementById("balloons");
   container.innerHTML = "";
 
   for (let i = 0; i < 6; i++) {
+
     let balloon = document.createElement("a-entity");
 
     balloon.setAttribute("gltf-model", "#balloonModel");
     balloon.setAttribute("position", `${Math.random()*4-2} ${Math.random()*3+1} -4.9`);
     balloon.setAttribute("scale", "0.5 0.5 0.5");
 
-    // Movement animation
     balloon.setAttribute("animation", {
       property: "position",
       dir: "alternate",
@@ -170,6 +198,53 @@ function spawnMovingBalloons() {
     balloon.addEventListener("click", () => popBalloon(balloon));
 
     container.appendChild(balloon);
+  }
+}
+
+// ================= POP =================
+function popBalloon(balloon) {
+
+  balloon.setAttribute("animation", {
+    property: "scale",
+    to: "0 0 0",
+    dur: 200
+  });
+
+  setTimeout(() => {
+    if (balloon.parentNode) {
+      balloon.parentNode.removeChild(balloon);
+    }
+  }, 200);
+
+  score += 10;
+  document.getElementById("score").innerText = score;
+
+  if (!muted) {
+    document.querySelector("#popSound").play();
+  }
+
+  flashEffect();
+  recoil();
+  checkLevel();
+}
+
+// ================= LEVEL CHECK =================
+function checkLevel() {
+  const remaining = document.querySelectorAll("#balloons a-entity").length;
+
+  if (remaining === 0) {
+    level++;
+
+    if (level === 2) {
+      setTimeout(() => {
+        alert("Level 2!");
+        spawnLevel2();
+      }, 300);
+    } else {
+      setTimeout(() => {
+        alert("You Win!");
+      }, 300);
+    }
   }
 }
 </script>
