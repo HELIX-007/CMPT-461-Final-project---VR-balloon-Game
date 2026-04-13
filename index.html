@@ -63,8 +63,11 @@
   <button onclick="pauseGame()">Pause</button>
 </div>
 
-<a-scene vr-mode-ui="enabled: true" renderer="antialias: true">
-
+<a-scene 
+  vr-mode-ui="enabled: true"
+  webxr="optionalFeatures: local-floor; referenceSpaceType: local"
+  renderer="antialias: true">
+  
   <!-- ASSETS (FIXED PATHS) -->
   <a-assets timeout="10000">
     <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
@@ -73,22 +76,18 @@
 
   <a-sky color="#87CEEB"></a-sky>
 
-  <a-camera look-controls="magicWindowTrackingEnabled: true" position="0 1.6 0">
+  <a-camera 
+  look-controls="magicWindowTrackingEnabled: true"
+  raycaster="objects: .clickable"
+  cursor="fuse: true; fuseTimeout: 1000">
 
-    <a-cursor 
-      fuse="true"
-      fuse-timeout="1000"
-      material="color: red"
-      geometry="radiusInner: 0.005; radiusOuter: 0.01">
-    </a-cursor>
+  <!-- Yellow crosshair -->
+  <a-cursor 
+    material="color: yellow; shader: flat"
+    geometry="radiusInner: 0.008; radiusOuter: 0.015">
+  </a-cursor>
 
-    <a-entity id="flash"
-      geometry="primitive: circle; radius: 0.03"
-      material="color: yellow; opacity: 0"
-      position="0 0 -1">
-    </a-entity>
-
-  </a-camera>
+</a-camera>
 
   <a-light type="ambient" intensity="1"></a-light>
 
@@ -132,7 +131,7 @@ function spawnBalloons() {
       balloon.setAttribute("gltf-model", "#balloonModel");
       balloon.setAttribute("position", `${i} ${j} -4.9`);
       balloon.setAttribute("scale", "0.5 0.5 0.5");
-
+      balloon.setAttribute("class", "clickable");
       balloon.addEventListener("click", () => popBalloon(balloon));
 
       container.appendChild(balloon);
