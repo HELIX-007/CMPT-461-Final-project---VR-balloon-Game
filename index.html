@@ -1,253 +1,149 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>ANUSH VR Balloon Shooter</title>
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <title>VR Balloon Gallery | Final Project</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script>
+      let score = 0;
+      let balloonsPopped = 0;
 
-  <style>
-    body { margin: 0; overflow: hidden; }
+      // Audio Context Unlock for iPhone
+      function unlockAudio() {
+        if (AFRAME.utils.device.isIOS()) {
+          const sceneEl = document.querySelector('a-scene');
+          if (sceneEl.audioListener) {
+            sceneEl.audioListener.context.resume();
+          }
+        }
+      }
 
-    #overlay {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: black;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
+      AFRAME.registerComponent('music-toggle', {
+        init: function () {
+          this.el.addEventListener('click', () => {
+            unlockAudio();
+            let music = document.querySelector('#bgMusic').components.sound;
+            if (music.isPlaying) {
+              music.stopSound();
+              this.el.querySelector('a-text').setAttribute('value', 'Music: OFF');
+              this.el.setAttribute('material', 'color', '#aa0000');
+            } else {
+              music.playSound();
+              this.el.querySelector('a-text').setAttribute('value', 'Music: ON');
+              this.el.setAttribute('material', 'color', '#222');
+            }
+          });
+        }
+      });
 
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 18px;
-    }
+      AFRAME.registerComponent('start-game', {
+        init: function () {
+          this.el.addEventListener('click', () => {
+            unlockAudio();
+            document.querySelector('#ui-container').setAttribute('visible', 'false');
+            document.querySelector('#ui-container').setAttribute('scale', '0 0 0');
+            document.querySelector('#game-elements').setAttribute('visible', 'true');
+            document.querySelector('#score-hud').setAttribute('visible', 'true');
+          });
+        }
+      });
 
-    #scoreUI {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      color: white;
-      font-size: 20px;
-      z-index: 5;
-    }
+      AFRAME.registerComponent('balloon-target', {
+        init: function () {
+          this.el.addEventListener('click', () => {
+            const pop = document.querySelector('#popSound').components.sound;
+            if(pop) pop.playSound();
 
-    #pauseUI {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      z-index: 5;
-    }
-  </style>
-</head>
+            score += 10;
+            balloonsPopped++;
+            document.querySelector('#scoreBoard').setAttribute('value', 'Score: ' + score);
+            
+            this.el.setAttribute('animation__pop', { property: 'scale', to: '0 0 0', dur: 150 });
 
-<body>
+            setTimeout(() => {
+              this.el.setAttribute('visible', 'false');
+              this.el.classList.remove('balloon'); 
+              if (balloonsPopped === 3) {
+                  document.querySelector('#level1').setAttribute('visible', 'false');
+                  document.querySelector('#level2').setAttribute('visible', 'true');
+              }
+            }, 150);
+          });
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene 
+      xr-mode-ui="cardboardModeEnabled: true" 
+      device-orientation-permission-ui="enabled: true"
+      loading-screen="backgroundColor: #222; dotsColor: #FFD700">
+      
+      <a-assets timeout="5000"> <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
+        <audio id="popSoundFile" src="assets/balloonpop.mp3" crossorigin="anonymous"></audio>
+        <img id="groundTex" src="https://i.imgur.com/W4M2QvU.png">
+        <audio id="bgMusicSrc" src="https://cdn.aframe.io/composer/audio/ambient.mp3" crossorigin="anonymous"></audio>
+      </a-assets>
 
-<!-- ================= SPLASH SCREEN ================= -->
-<div id="overlay">
-  <h1>ANUSH</h1>
-  <button onclick="startGame()">Start Game</button>
-  <button onclick="toggleMute()" id="muteBtn">Mute: OFF</button>
-</div>
+      <a-entity id="bgMusic" sound="src: #bgMusicSrc; loop: true; volume: 0.3; autoplay: false"></a-entity>
+      <a-entity id="popSound" sound="src: #popSoundFile; poolSize: 5"></a-entity>
 
-<!-- ================= UI ================= -->
-<div id="scoreUI">
-  Score: <span id="score">0</span>
-</div>
+      <a-entity camera look-controls position="0 1.6 0">
+        <a-cursor 
+          id="cursor"
+          fuse="true" 
+          fuse-timeout="1200"
+          raycaster="objects: .clickable, .balloon"
+          material="color: #FFD700; shader: flat"
+          position="0 0 -1">
+        </a-cursor>
+        
+        <a-entity id="score-hud" visible="false" position="0 -0.5 -1.5">
+            <a-plane color="#000" opacity="0.8" width="0.8" height="0.2"></a-plane>
+            <a-text id="scoreBoard" value="Score: 0" align="center" width="2.5" color="#FFF" shader="flat" position="0 0 0.05"></a-text>
+        </a-entity>
+      </a-entity>
 
-<div id="pauseUI">
-  <button onclick="pauseGame()">Pause</button>
-</div>
+      <a-entity id="ui-container" position="0 1.6 -3">
+        <a-plane color="#000" width="3.5" height="2.2" opacity="0.9"></a-plane>
+        <a-text value="BALLOON GALLERY VR" align="center" position="0 0.7 0.1" width="5" color="#FFD700"></a-text>
+        <a-text value="BY: ANUSH" align="center" position="0 0.4 0.1" width="3"></a-text>
+        
+        <a-entity id="musicBtn" class="clickable" music-toggle
+                  geometry="primitive: plane; width: 1.2; height: 0.3" 
+                  material="color: #aa0000" 
+                  position="0 0 0.1">
+          <a-text value="Music: OFF" align="center" width="3" position="0 0 0.01"></a-text>
+        </a-entity>
 
-<!-- ================= A-FRAME ================= -->
-<a-scene vr-mode-ui="enabled: true" renderer="antialias: true">
+        <a-entity class="clickable" start-game
+                  geometry="primitive: plane; width: 1.5; height: 0.4" 
+                  material="color: #28a745" 
+                  position="0 -0.6 0.1">
+          <a-text value="START GAME" align="center" width="4" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
 
-  <!-- Assets -->
-  <a-assets>
-    <a-asset-item id="balloonModel" src="balloon.glb"></a-asset-item>
-    <audio id="popSound" src="balloonpop.mp3"></audio>
-  </a-assets>
+      <a-entity id="game-elements" visible="false">
+        <a-entity id="level1">
+          <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="-1.5 2 -5"></a-entity>
+          <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="0 2.5 -6"></a-entity>
+          <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="1.5 1.8 -4"></a-entity>
+        </a-entity>
 
-  <!-- Sky -->
-  <a-sky color="#87CEEB"></a-sky>
+        <a-entity id="level2" visible="false">
+          <a-text value="LEVEL 2" position="0 4 -5" align="center" color="#FFD700" width="8"></a-text>
+          <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="-2 2 -6" 
+                    animation="property: position; to: 2 2 -6; dir: alternate; dur: 3000; loop: true"></a-entity>
+          <a-entity class="balloon clickable" balloon-target gltf-model="#balloonModel" position="0 1 -4" 
+                    animation="property: position; to: 0 4 -4; dir: alternate; dur: 2000; loop: true"></a-entity>
+        </a-entity>
 
-  <!-- Camera -->
-  <a-camera look-controls="magicWindowTrackingEnabled: true" position="0 1.6 0">
-
-    <!-- Gaze Cursor -->
-    <a-cursor 
-      fuse="true"
-      fuse-timeout="1000"
-      material="color: red; shader: flat"
-      geometry="radiusInner: 0.005; radiusOuter: 0.01"
-      animation__click="property: scale; startEvents: click; from: 1 1 1; to: 0.8 0.8 0.8; dur: 150"
-      animation__fusing="property: scale; startEvents: fusing; to: 1.3 1.3 1.3; dur: 1000">
-    </a-cursor>
-
-    <!-- Flash -->
-    <a-entity id="flash"
-      geometry="primitive: circle; radius: 0.03"
-      material="color: yellow; opacity: 0"
-      position="0 0 -1">
-    </a-entity>
-
-  </a-camera>
-
-  <!-- Lighting -->
-  <a-light type="ambient" intensity="1"></a-light>
-
-  <!-- Wall -->
-  <a-plane position="0 2 -5" width="6" height="4" color="#333"></a-plane>
-
-  <!-- Balloons -->
-  <a-entity id="balloons"></a-entity>
-
-</a-scene>
-
-<script>
-let score = 0;
-let muted = false;
-let level = 1;
-
-// ================= START =================
-function startGame() {
-  document.getElementById("overlay").style.display = "none";
-  spawnLevel1();
-}
-
-// ================= MUTE =================
-function toggleMute() {
-  muted = !muted;
-  document.getElementById("muteBtn").innerText = "Mute: " + (muted ? "ON" : "OFF");
-}
-
-// ================= PAUSE =================
-function pauseGame() {
-  alert("Game Paused");
-  location.reload();
-}
-
-// ================= FLASH =================
-function flashEffect() {
-  let flash = document.querySelector("#flash");
-  flash.setAttribute("material", "opacity", 1);
-
-  setTimeout(() => {
-    flash.setAttribute("material", "opacity", 0);
-  }, 100);
-}
-
-// ================= RECOIL =================
-function recoil() {
-  let cam = document.querySelector("a-camera");
-
-  cam.setAttribute("animation", {
-    property: "rotation",
-    to: "-2 0 0",
-    dur: 100,
-    dir: "alternate"
-  });
-}
-
-// ================= LEVEL 1 =================
-function spawnLevel1() {
-  const container = document.getElementById("balloons");
-  container.innerHTML = "";
-
-  for (let i = -2; i <= 2; i++) {
-    for (let j = 1; j <= 3; j++) {
-
-      let balloon = document.createElement("a-entity");
-
-      balloon.setAttribute("gltf-model", "#balloonModel");
-      balloon.setAttribute("position", `${i} ${j} -4.9`);
-      balloon.setAttribute("scale", "0.5 0.5 0.5");
-
-      balloon.addEventListener("click", () => popBalloon(balloon));
-
-      container.appendChild(balloon);
-    }
-  }
-}
-
-// ================= LEVEL 2 =================
-function spawnLevel2() {
-  const container = document.getElementById("balloons");
-  container.innerHTML = "";
-
-  for (let i = 0; i < 6; i++) {
-
-    let balloon = document.createElement("a-entity");
-
-    balloon.setAttribute("gltf-model", "#balloonModel");
-    balloon.setAttribute("position", `${Math.random()*4-2} ${Math.random()*3+1} -4.9`);
-    balloon.setAttribute("scale", "0.5 0.5 0.5");
-
-    balloon.setAttribute("animation", {
-      property: "position",
-      dir: "alternate",
-      dur: 2000,
-      loop: true,
-      to: `${Math.random()*4-2} ${Math.random()*3+1} -4.9`
-    });
-
-    balloon.addEventListener("click", () => popBalloon(balloon));
-
-    container.appendChild(balloon);
-  }
-}
-
-// ================= POP =================
-function popBalloon(balloon) {
-
-  balloon.setAttribute("animation", {
-    property: "scale",
-    to: "0 0 0",
-    dur: 200
-  });
-
-  setTimeout(() => {
-    if (balloon.parentNode) {
-      balloon.parentNode.removeChild(balloon);
-    }
-  }, 200);
-
-  score += 10;
-  document.getElementById("score").innerText = score;
-
-  if (!muted) {
-    document.querySelector("#popSound").play();
-  }
-
-  flashEffect();
-  recoil();
-  checkLevel();
-}
-
-// ================= LEVEL CHECK =================
-function checkLevel() {
-  const remaining = document.querySelectorAll("#balloons a-entity").length;
-
-  if (remaining === 0) {
-    level++;
-
-    if (level === 2) {
-      setTimeout(() => {
-        alert("Level 2!");
-        spawnLevel2();
-      }, 300);
-    } else {
-      setTimeout(() => {
-        alert("You Win!");
-      }, 300);
-    }
-  }
-}
-</script>
-
-</body>
+        <a-sky color="#87CEEB"></a-sky>
+        <a-plane src="#groundTex" rotation="-90 0 0" width="100" height="100" repeat="40 40"></a-plane>
+        <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+        <a-entity light="type: directional; intensity: 0.6" position="-1 3 1"></a-entity>
+      </a-entity>
+    </a-scene>
+  </body>
 </html>
