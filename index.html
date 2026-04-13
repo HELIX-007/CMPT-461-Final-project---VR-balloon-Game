@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>ANUSH VR Balloon Shooter</title>
 
-  <!-- IMPORTANT FOR MOBILE -->
+  <!-- MOBILE FIX -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
@@ -39,13 +39,6 @@
       font-size: 20px;
       z-index: 5;
     }
-
-    #pauseUI {
-      position: absolute;
-      top: 10px;
-      left: 20px;
-      z-index: 5;
-    }
   </style>
 </head>
 
@@ -55,42 +48,30 @@
 <div id="overlay">
   <h1>ANUSH</h1>
   <button onclick="startGame()">Start Game</button>
-  <button onclick="toggleMute()" id="muteBtn">Mute: OFF</button>
 </div>
 
-<!-- UI -->
+<!-- SCORE -->
 <div id="scoreUI">
   Score: <span id="score">0</span>
 </div>
 
-<div id="pauseUI">
-  <button onclick="pauseGame()">Pause</button>
-</div>
-
-<!-- SCENE -->
-<a-scene embedded renderer="antialias: true">
-
-  <!-- ASSETS -->
-  <a-assets timeout="10000">
-    <a-asset-item id="balloonModel" src="assets/balloon.glb"></a-asset-item>
-    <audio id="popSound" src="assets/balloonpop.mp3"></audio>
-  </a-assets>
+<a-scene embedded>
 
   <!-- SKY -->
   <a-sky color="#87CEEB"></a-sky>
 
-  <!-- CAMERA + GAZE (FIXED) -->
+  <!-- CAMERA -->
   <a-entity 
     camera 
     look-controls="magicWindowTrackingEnabled: true"
     raycaster="objects: .clickable">
 
-    <!-- Yellow gaze cursor -->
+    <!-- YELLOW GAZE -->
     <a-entity
       cursor="fuse: true; fuseTimeout: 1000"
       position="0 0 -1"
       geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-      material="color: yellow; shader: flat">
+      material="color: yellow">
     </a-entity>
 
   </a-entity>
@@ -108,7 +89,6 @@
 
 <script>
 let score = 0;
-let muted = false;
 
 // START GAME
 function startGame() {
@@ -116,32 +96,20 @@ function startGame() {
   spawnBalloons();
 }
 
-// MUTE
-function toggleMute() {
-  muted = !muted;
-  document.getElementById("muteBtn").innerText = "Mute: " + (muted ? "ON" : "OFF");
-}
-
-// PAUSE
-function pauseGame() {
-  location.reload();
-}
-
-// SPAWN BALLOONS
+// SPAWN
 function spawnBalloons() {
   const container = document.getElementById("balloons");
-  container.innerHTML = "";
 
   for (let i = -2; i <= 2; i++) {
     for (let j = 1; j <= 3; j++) {
 
       let balloon = document.createElement("a-entity");
 
-      balloon.setAttribute("gltf-model", "#balloonModel");
+      // LOAD MODEL DIRECTLY (no <a-assets>)
+      balloon.setAttribute("gltf-model", "assets/balloon.glb");
       balloon.setAttribute("position", `${i} ${j} -4.9`);
       balloon.setAttribute("scale", "0.5 0.5 0.5");
 
-      // IMPORTANT: makes it targetable
       balloon.setAttribute("class", "clickable");
 
       balloon.addEventListener("click", () => popBalloon(balloon));
@@ -151,7 +119,7 @@ function spawnBalloons() {
   }
 }
 
-// POP BALLOON
+// POP
 function popBalloon(balloon) {
 
   balloon.setAttribute("animation", {
@@ -160,18 +128,14 @@ function popBalloon(balloon) {
     dur: 200
   });
 
-  setTimeout(() => {
-    if (balloon.parentNode) {
-      balloon.parentNode.removeChild(balloon);
-    }
-  }, 200);
+  setTimeout(() => balloon.remove(), 200);
 
   score += 10;
   document.getElementById("score").innerText = score;
 
-  if (!muted) {
-    document.querySelector("#popSound").play();
-  }
+  // SAFE SOUND (iOS friendly)
+  let audio = new Audio("assets/balloonpop.mp3");
+  audio.play();
 }
 </script>
 
